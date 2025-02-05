@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload de Vídeo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f0f0f0;
+            color: #333;
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            text-align: center;
+            width: 400px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            color: #ffffff;
+        }
+        .modal-content a {
+            color: #6200ea;
+            text-decoration: underline;
+        }
+        .upload-area {
+            border: 2px dashed #6200ea;
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+            transition: border-color 0.3s;
+            min-height: 150px;
+            cursor: pointer;
+        }
+        .upload-area.hover {
+            border-color: #3700b3;
+        }
+        .upload-info {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #333;
+        }
+        button {
+            background-color: #6200ea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #3700b3;
+        }
+        .icon {
+            font-size: 50px;
+            color: #6200ea;
+            margin-bottom: 10px;
+        }
+        /* Spinner styles */
+        .spinner {
+            display: none;
+            border: 8px solid #f3f3f3; /* Light grey */
+            border-top: 8px solid #6200ea; /* Blue */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Upload de Vídeo</h1>
+        <div class="upload-area" id="uploadArea">
+            <div class="icon">📤</div>
+            <p>Arraste e solte seu vídeo aqui ou clique para selecionar</p>
+            <input type="file" name="video" accept="video/mp4" required style="display: none;">
+            <div class="upload-info" id="uploadInfo"></div>
+        </div>
+        <button type="submit" id="uploadButton">Enviar Vídeo</button>
+        <div class="spinner" id="spinner"></div>
+    </div>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <p id="modalMessage"></p>
+            <button id="copyLinkButton">Copiar Link</button>
+            <button id="closeModal">Fechar</button>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const modal = document.getElementById('modal');
+        const modalMessage = document.getElementById('modalMessage');
+        const closeModal = document.getElementById('closeModal');
+        const uploadInfo = document.getElementById('uploadInfo');
+        const uploadButton = document.getElementById('uploadButton');
+        const copyLinkButton = document.getElementById('copyLinkButton');
+        const spinner = document.getElementById('spinner');
+
+        uploadArea.addEventListener('click', () => {
+            uploadArea.querySelector('input[type="file"]').click();
+        });
+
+        uploadArea.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            uploadArea.classList.add('hover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('hover');
+        });
+
+        uploadArea.addEventListener('drop', (event) => {
+            event.preventDefault();
+            uploadArea.classList.remove('hover');
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                uploadArea.querySelector('input[type="file"]').files = files;
+                uploadInfo.textContent = `Arquivo selecionado: ${files[0].name}`;
+            } else {
+                uploadInfo.textContent = 'Nenhum arquivo selecionado.';
+            }
+        });
+
+        uploadArea.querySelector('input[type="file"]').addEventListener('change', (event) => {
+            const files = event.target.files;
+            if (files.length > 0) {
+                uploadInfo.textContent = `Arquivo selecionado: ${files[0].name}`;
+            }
+        });
+
+        uploadButton.addEventListener('click', async (event) => {
+            event.preventDefault();
+            const formData = new FormData();
+            const fileInput = uploadArea.querySelector('input[type="file"]');
+            if (fileInput.files.length > 0) {
+                formData.append('video', fileInput.files[0]);
+                spinner.style.display = 'block';
+                try {
+                    const response = await fetch('/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.text();
+                    modalMessage.innerHTML = result;
+                    modal.style.display = 'flex';
+                } catch (error) {
+                    modalMessage.textContent = 'Erro ao enviar o vídeo: ' + error.message;
+                    modal.style.display = 'flex';
+                } finally {
+                    spinner.style.display = 'none';
+                }
+            } else {
+                modalMessage.textContent = 'Por favor, selecione um arquivo.';
+                modal.style.display = 'flex';
+            }
+        });
+
+        closeModal.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        copyLinkButton.addEventListener('click', () => {
+            const link = modalMessage.querySelector('a') ? modalMessage.querySelector('a').href : '';
+            if (link) {
+                navigator.clipboard.writeText(link).then(() => {
+                    alert('Link copiado para a área de transferência!');
+                });
+            } else {
+                alert('Nenhum link disponível para copiar.');
+            }
+        });
+    </script>
+</body>
+</html>
